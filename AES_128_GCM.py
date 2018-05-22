@@ -1,5 +1,5 @@
-from Crypto.Cipher import AES
-from Crypto.Hash import SHA256
+from Cryptodome.Cipher import AES
+from Cryptodome.Hash import SHA256
 import binascii
 import os
 
@@ -39,7 +39,6 @@ def encrypt(plaintext, key):
 
     # Verify block size is 16 bytes
     assert(AES.block_size == 16), "Block size is not 16 bytes (128 bits)"
-    assert(cipher.mode == AES.MODE_GCM), "Not using GCM mode"
     print("AES-128-GCM in use")
 
     # Encrypt message and generate GCM MAC
@@ -65,13 +64,14 @@ def decrypt(ciphertext, key, iv, mac):
     sha256_key = sha256.digest()
 
     cipher = AES.new(sha256_key, AES.MODE_GCM, iv)
+    print("Cipher text decrypted")
 
     plaintext = cipher.decrypt(ciphertext)
     try:
         cipher.verify(mac)
         print("Message integrity verified!")
     except ValueError:
-        print("WARNING! Authentication error when decoding AES-128-GCM ciphertext. Do not trust the plaintext!")
+        print("WARNING! Authentication error when decoding AES-128-GCM cipher text. Do not trust the decrypted text!")
         
     return plaintext
 
@@ -86,7 +86,7 @@ def print_decoded(encoded):
 
 # # Test GCM MAC feature
 # k = "my secret key".encode()
-# c, i, m = encrypt("Down, down, down. Would the fall NEVER come to an end!", k)
+# c, i, m = encrypt("Down, down, down. Would the fall NEVER come to an end!".encode(), k)
 
 # print_decoded(decrypt(c, k, i, m))
 

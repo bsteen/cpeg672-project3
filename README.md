@@ -11,13 +11,14 @@ libraries to assist, again dictated by motivation.
 
 Dependencies:  
 At least Python 3.4.3  
-Needs version of pycrypto the supports AES in GCM mode (v2.7a1):  https://github.com/dlitz/pycrypto/releases  
-secp256k1 ecliptic curve needs to be supported on system: `$ openssl ecparam -list_curves | grep secp256k1`
+Needs version of Cryptodome the supports AES in GCM mode: http://pycryptodome.readthedocs.io/en/latest/src/installation.html  
+`install pycryptodomex` if you want to have both pycrypto and pycryptodome, otherwise: `pip install pycryptodome`  
+
+secp256k1 ecliptic curve needs to be supported on system: `$ openssl ecparam -list_curves | grep secp256k1`  
 
 References:  
-https://cryptography.io/en/latest/hazmat/primitives/symmetric-encryption/#cryptography.hazmat.primitives.ciphers.modes.GCM  
+http://pycryptodome.readthedocs.io/en/latest/src/api.html  
 https://en.wikipedia.org/wiki/Galois/Counter_Mode  
-https://github.com/dlitz/pycrypto/blob/master/lib/Crypto/Cipher/AES.py  
 https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf  
 
 TO DO:  
