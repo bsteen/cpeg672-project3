@@ -71,8 +71,8 @@ def decrypt(ciphertext, key, iv, mac):
         cipher.verify(mac)
         print("Message integrity verified!")
     except ValueError:
-        print("WARNING! Authentication error when decoding AES-128-GCM ciphertext. The key, IV, and/or MAC was invalid.")
-
+        print("WARNING! Authentication error when decoding AES-128-GCM ciphertext. Do not trust the plaintext!")
+        
     return plaintext
 
 
@@ -84,7 +84,7 @@ def print_decoded(encoded):
         print("Could not decode text:", encoded)
     print()
 
-# # Test GCM
+# # Test GCM MAC feature
 # k = "my secret key".encode()
 # c, i, m = encrypt("Down, down, down. Would the fall NEVER come to an end!", k)
 
@@ -105,3 +105,14 @@ def print_decoded(encoded):
 # # Will be able to decode, but can't trust what it says
 # fake_m = b'df8asdfa333sdflkajsd'
 # print_decoded(decrypt(c, k, i, fake_m))
+
+# # Test vector for GCM
+# k = binascii.unhexlify("feffe9928665731c6d6a8f9467308308")
+# iv = binascii.unhexlify("cafebabefacedbaddecaf888")
+# p = binascii.unhexlify("d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b391aafd255")
+
+# cipher = AES.new(k, AES.MODE_GCM, iv)
+# c, m = cipher.encrypt_and_digest(p)
+
+# assert(binascii.hexlify(c) == b"42831ec2217774244b7221b784d0d49ce3aa212f2c02a4e035c17e2329aca12e21d514b25466931c7d8f6a5aac84aa051ba30b396a0aac973d58e091473f5985")
+# assert(binascii.hexlify(m) == b"4d5c2af327cd64a62cf35abd2ba6fab4")
