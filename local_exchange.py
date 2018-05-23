@@ -26,7 +26,7 @@ class Message:
         self.mac = ""
         
 class Host:
-    def _init__(self, name):
+    def __init__(self, name):
         self.name = name
         
         # Parameters and keys for ECDHE
@@ -51,11 +51,12 @@ class Host:
             return None, None, None
             
     def clear_current_message(self):
+        self.current_message.clear()
         self.current_message = None
     
     # Simulate sending a message over the network
     def send_message(self, message, target_Host):
-        target_Host.message = message
+        target_Host.current_message = message
 
 hostA = Host("hostA")
 hostB = Host("hostB")
@@ -64,21 +65,24 @@ hostB = Host("hostB")
 # Thier public ECDSA keys are "common knowledge", like CA certifcates in a browser
 print("Host A generating ECDSA keys...")
 EC.generate_ECDSA_keys(hostA.name)
+print()
 print("Host B generating ECDSA keys...")
 EC.generate_ECDSA_keys(hostB.name)
+print()
 
 print("Host A generating ECDHE private and public key...")
 hostA.private_key_ECDHE, hostA.public_key_ECDHE, hostA.prime_ECDHE, hostA.a_ECDHE = EC.gen_ECDHE_keys("hostA")
+print()
 print("Host B generating ECDHE private and public key...")
 hostB.private_key_ECDHE, hostB.public_key_ECDHE, hostB.prime_ECDHE, hostB.a_ECDHE = EC.gen_ECDHE_keys("hostB")
+print()
 
-print("Host A signing its ECDHE public key with ECDSA private key...")
+print("Host A signing its ECDHE public key with its ECDSA private key...")
 signed_public_key_ECDHE = EC.sign_data(hostA.name, hostA.public_key_ECDHE)
-
-print("Host A sending public ECDHE key to Host B...")
+print("Host A sending public ECDHE key (and signed version) to Host B...")
 pub_key_ECDHE_msg = Message(hostA.public_key_ECDHE, "", signed_public_key_ECDHE)
 hostA.send_message(pub_key_ECDHE_msg, hostB)
-pub_key_ECDHE_msg.clear()
+print()
 
 print("Host B recieving Host A's public ECDHE key...")
 print("Host B validating Host A's public ECDHE key...")
@@ -92,14 +96,14 @@ if verified:
 else:
     print("ERROR: Could not verify Host A's public key!")
     quit(1)
+print()
 
-print("Host B signing its ECDHE public key with ECDSA private key...")
+print("Host B signing its ECDHE public key with its ECDSA private key...")
 signed_public_key_ECDHE = EC.sign_data(hostB.name, hostB.public_key_ECDHE)
-
-print("Host B sending public ECDHE key to Host A...")
+print("Host B sending public ECDHE key (and signed version) to Host A...")
 pub_key_ECDHE_msg = Message(hostB.public_key_ECDHE, "", signed_public_key_ECDHE)
 hostB.send_message(pub_key_ECDHE_msg, hostA)
-pub_key_ECDHE_msg.clear()
+print()
 
 print("Host A recieving Host B's public ECDHE key...")
 print("Host A validating Host B's public ECDHE key...")
@@ -114,36 +118,37 @@ else:
     print("ERROR: Could not verify Host B's public key!")
     quit(1)
 
+print()
 print("Host A generating ECDHE shared secret...")
 hostA.shared_secret_ECDHE = EC.gen_shared_secret(hostA.private_key_ECDHE, hostA.other_public_key_ECDHE, hostA.prime_ECDHE, hostA.a_ECDHE)
-
 print("Host B generating ECDHE shared secret...")
 hostB.shared_secret_ECDHE = EC.gen_shared_secret(hostB.private_key_ECDHE, hostB.other_public_key_ECDHE, hostB.prime_ECDHE, hostB.a_ECDHE)
 
+
 print("\n***KEY EXCHANGE COMPLETE***\n")
+# print("Switching to AES-128-GCM for further communication")
 
-print("Switching to AES-128-GCM for further communication")
 
-print("Host A encrypting and sending message to Host B...")
-ciphertext, iv, mac = AES_128_GCM.encrypt("Hello, I'm Host A. Please send me some super special awsome secret info.", hostA.shared_secret_ECDHE)
-encrypted_message = Message(ciphertext, iv, mac)
-hostA.send_message(encrypted_message, hostB)
-encrypted_message.clear()
+# print("Host A encrypting and sending message to Host B...")
+# ciphertext, iv, mac = AES_128_GCM.encrypt("Hello, I'm Host A. Please send me some super special awsome secret info.", hostA.shared_secret_ECDHE)
+# encrypted_message = Message(ciphertext, iv, mac)
+# hostA.send_message(encrypted_message, hostB)
+# encrypted_message.clear()
 
-print("Host B receving message from Host A...")
-ciphertext, iv, mac = hostB.read_currnet_message()
-AES_128_GCM.decrypt(ciphertext, hostB.shared_secret_ECDHE, iv, mac)
-hostB.clear_current_message()
+# print("Host B receving message from Host A...")
+# ciphertext, iv, mac = hostB.read_currnet_message()
+# AES_128_GCM.decrypt(ciphertext, hostB.shared_secret_ECDHE, iv, mac)
+# hostB.clear_current_message()
 
-print("Host B encrypting and sending message to Host A...")
-ciphertext, iv, mac = AES_128_GCM.encrypt("Hello Host A, I'm Host B. Here is some secret info: 09 F9 11 02 9D 74 E3 5B D8 41 56 C5 63 56 88 C0", hostB.shared_secret_ECDHE)
-encrypted_message = Message(ciphertext, iv, mac)
-hostB.send_message(encrypted_message, hostA)
-encrypted_message.clear()
+# print("Host B encrypting and sending message to Host A...")
+# ciphertext, iv, mac = AES_128_GCM.encrypt("Hello Host A, I'm Host B. Here is some secret info: 09 F9 11 02 9D 74 E3 5B D8 41 56 C5 63 56 88 C0", hostB.shared_secret_ECDHE)
+# encrypted_message = Message(ciphertext, iv, mac)
+# hostB.send_message(encrypted_message, hostA)
+# encrypted_message.clear()
 
-print("Host A receving message from Host B...")
-ciphertext, iv, mac = hostA.read_currnet_message()
-AES_128_GCM.decrypt(ciphertext, hostA.shared_secret_ECDHE, iv, mac)
-hostA.clear_current_message()
+# print("Host A receving message from Host B...")
+# ciphertext, iv, mac = hostA.read_currnet_message()
+# AES_128_GCM.decrypt(ciphertext, hostA.shared_secret_ECDHE, iv, mac)
+# hostA.clear_current_message()
 
-print("\n***TRANSMISSION COMPLETE***")
+# print("\n***TRANSMISSION COMPLETE***")

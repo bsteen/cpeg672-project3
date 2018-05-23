@@ -110,26 +110,22 @@ def gen_ECDHE_keys(hostname):
     a = params["A"]
     prime = params["Prime"]
     
-    print("Generating secret and (ephemeral) public key...")
+    print("Generating private and (ephemeral) public key...")
     private_key = crypto_random.randint(2, order)
     
     while(gcd(private_key, order) != 1):
-        print("GCD of secret key and order != 1; Regenerating secret key...")
+        print("GCD of private key and order != 1; Regenerating secret key...")
         private_key = crypto_random.randint(2, order)
     
     public_key = point_multiply(private_key, generator, prime, a)
     
-    print("ECDHE private and public keys created.")
     return private_key, public_key, prime, a
     
 # Use own secret key and other host's public key to generate shared secret
 # Shared secret is SHA256 sum of x-coordinate from a*b*Generator
 # prime and a are from the parameters of the selected eliptic curve
 def gen_shared_secret(private_key, other_host_pub_key, prime_ECDHE, a_ECDHE):
-    
-    print("Generating EC shared secret...")
-    
-    # Only want to use x-coordinate only
+        # Only want to use x-coordinate only
     x_coord = point_multiply(private_key, other_host_pub_key, prime_ECDHE, a_ECDHE)[0]
     
     x_coord_hex = hex(x_coord)[2:]
@@ -138,7 +134,6 @@ def gen_shared_secret(private_key, other_host_pub_key, prime_ECDHE, a_ECDHE):
     sha256.update(x_coord_hex.encode())
     shared_secret = sha256.digest()
     
-    print("Shared EC secret created.")
     return shared_secret
 
 # Generate private and public keys for ECDSA with OpenSSL comman
@@ -147,7 +142,6 @@ def generate_ECDSA_keys(hostname):
     if not os.path.exists("certs"):
         os.makedirs("certs")
     
-    print("Generating ECDSA keys...")
     err1 = os.system("openssl ecparam -name secp384r1 -genkey -noout -out certs/%s_private_ECDSA.pem -param_enc explicit" % hostname)
     err2 = os.system("openssl ec -in certs/%s_private_ECDSA.pem -pubout -out certs/%s_public_ECDSA.pem" % (hostname, hostname))
     err3 = os.system("openssl ec -in certs/%s_private_ECDSA.pem -noout -out certs/%s_ECDSA_params.txt -text" % (hostname, hostname))
@@ -170,7 +164,6 @@ def generate_ECDSA_keys(hostname):
 # Data to be signed will usually be a ECDHE public keys (a tuple)
 # Need to pack tuple as string before signing
 def sign_data(signer_hostname, data):
-    print("Signing data...")
     data = str(data)
     
     err = os.system("echo \"%s\" | openssl dgst -sha256 -sign certs/%s_private_ECDSA.pem > certs/sig.bin" % (data, signer_hostname))
@@ -189,16 +182,15 @@ def sign_data(signer_hostname, data):
 # Verify signature of ECDSA signed file 
 # Data to be verified will usualy be a ECDHE public keys (a tuple) => need to pack data as string before verifying
 def verify_data(signer_hostname, data, signature):
-    print("Attempting to verify data signature...")
     data = str(data)
     
-    # Since we are assuming each host already knows each others's public key from the start
-    #we can just read right from the signer host's public key file
-    
+    # Place the signature in readable place
     file = open("certs/sig.bin", "wb")
     file.write(signature)
     file.close()
     
+    # Since we are assuming each host already knows each others's public key from the start
+    # we can just read right from the signer host's public key file
     err = os.system("echo \"%s\" | openssl dgst -sha256 -verify certs/%s_public_ECDSA.pem -signature certs/sig.bin" % (data, signer_hostname))
     os.remove("certs/sig.bin")
     
@@ -219,7 +211,7 @@ def verify_data(signer_hostname, data, signature):
 # assert(alice_shared == bob_shared)
 
 # Test ECDSA
-data = "asdasd"
-generate_ECDSA_keys("hostA")
-sig = sign_data("hostA", data)
-verify_data("hostA", data, sig)
+# data = "asdasd"
+# generate_ECDSA_keys("hostA")
+# sig = sign_data("hostA", data)
+# verify_data("hostA", data, sig)

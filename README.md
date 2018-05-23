@@ -14,7 +14,7 @@ At least Python 3.4.3
 Needs version of Cryptodome the supports AES in GCM mode: http://pycryptodome.readthedocs.io/en/latest/src/installation.html  
 `pip3 install --user pycryptodomex` if you want to keep both pycrypto and pycryptodome installed at once.  
 Otherwise, pycryptodome with take the place of pycrypto: `pip3 install --user pycryptodome`  
-secp256k1 ecliptic curve needs to be supported on system: `$ openssl ecparam -list_curves | grep secp256k1`  
+secp384r1 ecliptic curve needs to be supported on system: `$ openssl ecparam -list_curves | grep secp384r1`  
 
 References:  
 http://pycryptodome.readthedocs.io/en/latest/src/api.html  
@@ -24,5 +24,4 @@ https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
 TO DO:  
 Generate ECDHE params  
 Generate ECDSA params  
-Set up exchange  
 Do over sockets  
