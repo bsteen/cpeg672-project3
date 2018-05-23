@@ -14,9 +14,12 @@ class Message:
 		# Is the IV for decrypting the message.
         self.nonce = nonce
 
-        # Used when the transmission has switched over to symmetric crypto
-		# Is the MAC for decrypting the message in GCM mode
+        # Has 2 uses:
+        # 1) Holds signed public ECDHE key during key exchange
+        # 2) Also used when the transmission has switched over to symmetric crypto.
+        #    Is the MAC for verifying during decryption of message with GCM mode
         self.mac = mac
+        
     def clear(self):
         self.message = ""
         self.nonce = ""
@@ -34,8 +37,9 @@ class Host:
         self.other_public_key_ECDHE = "" # Public (ephemeral) key from other host
         self.shared_secret_ECDHE = ""
         
-        self.private_key_ECDSA = ""
-        self.public_key_ECDSA = ""
+        # Parameters and keys for ECDHE
+        # self.private_key_ECDSA = ""
+        # self.public_key_ECDSA = ""
         
         self.current_message = None
     
@@ -60,52 +64,61 @@ hostB = Host("hostB")
 # Thier public ECDSA keys are "common knowledge", like CA certifcates in a browser
 print("Host A generating ECDSA keys...")
 EC.generate_ECDSA_keys(hostA.name)
-
 print("Host B generating ECDSA keys...")
 EC.generate_ECDSA_keys(hostB.name)
 
-print("Hosts A and B are generating ECDHE private and public key...")
+print("Host A generating ECDHE private and public key...")
 hostA.private_key_ECDHE, hostA.public_key_ECDHE, hostA.prime_ECDHE, hostA.a_ECDHE = EC.gen_ECDHE_keys("hostA")
-
 print("Host B generating ECDHE private and public key...")
 hostB.private_key_ECDHE, hostB.public_key_ECDHE, hostB.prime_ECDHE, hostB.a_ECDHE = EC.gen_ECDHE_keys("hostB")
 
-# A signs public info
-# TO DO
+print("Host A signing its ECDHE public key with ECDSA private key...")
+signed_public_key_ECDHE = EC.sign_data(hostA.name, hostA.public_key_ECDHE)
 
 print("Host A sending public ECDHE key to Host B...")
-pub_key_ECDHE_msg = Message(hostA.public_key_ECDHE)
+pub_key_ECDHE_msg = Message(hostA.public_key_ECDHE, "", signed_public_key_ECDHE)
 hostA.send_message(pub_key_ECDHE_msg, hostB)
 pub_key_ECDHE_msg.clear()
 
-# B validates public key from A
-# TO DO
-
-# If valid, B stores A's public ECDHE key
 print("Host B recieving Host A's public ECDHE key...")
-hostB.other_public_key_ECDHE = hostB.read_currnet_message()[0] 
-hostB.clear_current_message()
+print("Host B validating Host A's public ECDHE key...")
+data = hostB.read_currnet_message()[0]
+signed_data = hostB.read_currnet_message()[2]
+verified = EC.verify_data(hostA.name, data, signed_data)
+if verified:
+    # If valid, B stores A's public ECDHE key
+    hostB.other_public_key_ECDHE = data
+    hostB.clear_current_message()
+else:
+    print("ERROR: Could not verify Host A's public key!")
+    quit(1)
 
-print("Host B generating ECDHE shared secret...")
-hostB.shared_secret_ECDHE = EC.gen_shared_secret(hostB.private_key_ECDHE, hostB.other_public_key_ECDHE, hostB.prime_ECDHE, hostB.a_ECDHE)
-
-# B signs public info
-# TO DO
+print("Host B signing its ECDHE public key with ECDSA private key...")
+signed_public_key_ECDHE = EC.sign_data(hostB.name, hostB.public_key_ECDHE)
 
 print("Host B sending public ECDHE key to Host A...")
-pub_key_ECDHE_msg = Message(hostB.public_key_ECDHE)
+pub_key_ECDHE_msg = Message(hostB.public_key_ECDHE, "", signed_public_key_ECDHE)
 hostB.send_message(pub_key_ECDHE_msg, hostA)
 pub_key_ECDHE_msg.clear()
 
-# A validates public key from B
-# TO DO
-
 print("Host A recieving Host B's public ECDHE key...")
-hostA.other_public_key_ECDHE = hostA.read_currnet_message()[0]
-hostA.clear_current_message()
+print("Host A validating Host B's public ECDHE key...")
+data = hostA.read_currnet_message()[0]
+signed_data = hostA.read_currnet_message()[2]
+verified = EC.verify_data(hostB.name, data, signed_data)
+if verified:
+    # If valid, A stores B's public ECDHE key
+    hostA.other_public_key_ECDHE = data
+    hostA.clear_current_message()
+else:
+    print("ERROR: Could not verify Host B's public key!")
+    quit(1)
 
 print("Host A generating ECDHE shared secret...")
 hostA.shared_secret_ECDHE = EC.gen_shared_secret(hostA.private_key_ECDHE, hostA.other_public_key_ECDHE, hostA.prime_ECDHE, hostA.a_ECDHE)
+
+print("Host B generating ECDHE shared secret...")
+hostB.shared_secret_ECDHE = EC.gen_shared_secret(hostB.private_key_ECDHE, hostB.other_public_key_ECDHE, hostB.prime_ECDHE, hostB.a_ECDHE)
 
 print("\n***KEY EXCHANGE COMPLETE***\n")
 

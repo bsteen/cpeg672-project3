@@ -1,4 +1,5 @@
 import os
+import subprocess
 from Cryptodome.Random import random as crypto_random
 from Cryptodome.Hash import SHA256
 from fractions import gcd
@@ -140,41 +141,85 @@ def gen_shared_secret(private_key, other_host_pub_key, prime_ECDHE, a_ECDHE):
     print("Shared EC secret created.")
     return shared_secret
 
+# Generate private and public keys for ECDSA with OpenSSL comman
 def generate_ECDSA_keys(hostname):
     # Make sure folder for PEM files exists
     if not os.path.exists("certs"):
         os.makedirs("certs")
     
-    print("Generating ECDHE keys...")
+    print("Generating ECDSA keys...")
     err1 = os.system("openssl ecparam -name secp384r1 -genkey -noout -out certs/%s_private_ECDSA.pem -param_enc explicit" % hostname)
-    err2 = os.system("openssl ec -in certs/%s_private_ECDSA.pem -noout -out certs/%s_params_ECDSA.txt -text" % (hostname, hostname))
+    err2 = os.system("openssl ec -in certs/%s_private_ECDSA.pem -pubout -out certs/%s_public_ECDSA.pem" % (hostname, hostname))
+    err3 = os.system("openssl ec -in certs/%s_private_ECDSA.pem -noout -out certs/%s_ECDSA_params.txt -text" % (hostname, hostname))
     
     if(err1 != 0):
         print("ERROR: Could not create private key!")
         exit(1)
-    if(err2 != 0):
-        print("ERROR: Could not create public key and parameters!")
+    if (err2 != 0):
+        print("ERROR: Could not create parameters")
+        exit(1)
+    if(err3 != 0):
+        print("ERROR: Could not create public key")
         exit(1)
         
     # Read in generated parameters
-    params = read_paramters(hostname, "ECDSA")
+    # params = read_paramters(hostname, "ECDSA")
+    return;
     
-        
-def sign_data(data):
-    return
+# Sign data using ECDSA with OpenSSL command
+# Data to be signed will usually be a ECDHE public keys (a tuple)
+# Need to pack tuple as string before signing
+def sign_data(signer_hostname, data):
+    print("Signing data...")
+    data = str(data)
+    
+    err = os.system("echo \"%s\" | openssl dgst -sha256 -sign certs/%s_private_ECDSA.pem > certs/sig.bin" % (data, signer_hostname))
+    if err != 0:
+        print("ERROR: Could not create signature!")
+        exit(1)
+    
+    # Read in and store the signature
+    file = open("certs/sig.bin", "rb")
+    signature = file.read()
+    file.close()
+    os.remove("certs/sig.bin") # Don't need to leave this file lying around
+    
+    return signature
 
-generate_ECDSA_keys("hostA")
+# Verify signature of ECDSA signed file 
+# Data to be verified will usualy be a ECDHE public keys (a tuple) => need to pack data as string before verifying
+def verify_data(signer_hostname, data, signature):
+    print("Attempting to verify data signature...")
+    data = str(data)
+    
+    # Since we are assuming each host already knows each others's public key from the start
+    #we can just read right from the signer host's public key file
+    
+    file = open("certs/sig.bin", "wb")
+    file.write(signature)
+    file.close()
+    
+    err = os.system("echo \"%s\" | openssl dgst -sha256 -verify certs/%s_public_ECDSA.pem -signature certs/sig.bin" % (data, signer_hostname))
+    os.remove("certs/sig.bin")
+    
+    return err == 0
 
 # Test ECDHE
-alice = gen_ECDHE_keys("hostA")
-bob = gen_ECDHE_keys("hostB")
-alice_shared = gen_shared_secret(alice[0], bob[1], alice[2], alice[3])
-bob_shared = gen_shared_secret(bob[0], alice[1], bob[2], bob[3])
-print(alice_shared)
-print(bob_shared)
+# alice = gen_ECDHE_keys("hostA")
+# print(alice[1])
+# bob = gen_ECDHE_keys("hostB")
+# alice_shared = gen_shared_secret(alice[0], bob[1], alice[2], alice[3])
+# bob_shared = gen_shared_secret(bob[0], alice[1], bob[2], bob[3])
+# print(alice_shared)
+# print(bob_shared)
 
-print(alice[0], bob[1], alice[2], alice[3])
-print(bob[0], alice[1], bob[2], bob[3])
-
+# print(alice[0], bob[1], alice[2], alice[3])
+# print(bob[0], alice[1], bob[2], bob[3])
 
 # assert(alice_shared == bob_shared)
+
+# Test ECDSA
+data = "asdasd"
+generate_ECDSA_keys("hostA")
+sig = sign_data("hostA", data)
+verify_data("hostA", data, sig)
