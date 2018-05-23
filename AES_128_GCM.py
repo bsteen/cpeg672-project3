@@ -51,6 +51,13 @@ def encrypt(plaintext, key):
 
     return ciphertext, iv, mac
 
+def print_decoded(encoded):
+    try:
+        plain = encoded.decode()
+        print(plain)
+    except:
+        print("Could not decode text:", encoded)
+    print()
 
 def decrypt(ciphertext, key, iv, mac):
     # Record all IVs used to decrypt to
@@ -73,18 +80,10 @@ def decrypt(ciphertext, key, iv, mac):
     except ValueError:
         print("WARNING! Authentication error when decoding AES-128-GCM cipher text. Do not trust the decrypted text!")
         
-    print("Decrypted message:")
+    print("Showing decrypted message:")
     print_decoded(plaintext)
+    
     return plaintext
-
-
-def print_decoded(encoded):
-    try:
-        plain = encoded.decode()
-        print(plain)
-    except:
-        print("Could not decode text:", encoded)
-    print()
 
 # # Test GCM MAC feature
 # k = "my secret key".encode()
