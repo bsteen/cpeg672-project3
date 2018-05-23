@@ -78,7 +78,7 @@ def decrypt(ciphertext, key, iv, mac):
     except ValueError:
         print("WARNING! Authentication error when decoding AES-128-GCM cipher text. Do not trust the decrypted text!")
         
-    print("Showing decrypted message:")
+    print("Showing decrypted message: ", end="")
     print_decoded(plaintext)
     
     return plaintext

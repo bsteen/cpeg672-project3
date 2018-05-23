@@ -28,33 +28,45 @@ def splitPoint(hexLines):
     gl=len(gen)//2
     return (int(gen[:gl],16), int(gen[gl:], 16))
 
+# Invert a point across the y-axis
+def invert_point(P, prime):
+    if P[0] == None:
+        return (None, None)
+
+    return (P[0], -P[1] % prime)
+
 # Used by point_multiply: Add two points on an elliptic curve
 # Q == P: https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication#Point_doubling
 # Else: https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication#Point_addition
 def point_add(Q, P, prime, a):
-    if Q == P:
-        lamba = ((3*P[0]**2 + a) * pow(2*P[1], prime - 2 , prime)) % prime
-                                            # Inverse modulus, but since modulus is always prime use Fermat's little theorem
+    if P[0] == None:
+        return Q
+    if Q[0] == None:
+        return P
+    if Q == invert_point(P, prime):
+        return (None, None)
+
+    if P == Q:
+        s = ((3*P[0]**2 + a) * pow(2*P[1], prime - 2 , prime)) % prime
     else:
-        lamba = ((Q[1] - P[1]) * pow(Q[0] - P[0], prime - 2, prime)) % prime
-        
-    x_r = (lamba**2 - P[0] - Q[0]) % prime
-    y_r = (lamba * (P[0] - x_r) - P[1]) % prime
+        s = ((Q[1] - P[1]) * pow(Q[0] - P[0], prime - 2, prime)) % prime
+
+    x_r = (s**2 - P[0] - Q[0]) % prime
+    y_r = (s * (P[0] - x_r) - P[1]) % prime
     return (x_r, y_r)
 
 # Point multiplication along an elliptic curve
 # Double-and-add method: https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication#Double-and-add
 def point_multiply(point, generator, prime, a):
     N = generator
-    Q = (0, 0)
+    Q = (None, None)
     binary_point = bin(point)[2:]  # Don't count the "0b" at the start
     m = len(binary_point)
-    
-    for i in range(0, m):
+
+    for i in range(m):
         if(binary_point[i] == "1"):
             Q = point_add(Q, N, prime, a)
         N = point_add(N, N, prime, a)
-    
     return Q
 
 # Read in parameters of EC
@@ -108,16 +120,22 @@ def gen_ECDHE_keys(hostname):
     generator = params["Gener"]
     order = params["Order"]
     a = params["A"]
+    b = params["B"]
     prime = params["Prime"]
     
     print("Generating private and (ephemeral) public key...")
     private_key = crypto_random.randint(2, order)
     
     while(gcd(private_key, order) != 1):
-        print("GCD of private key and order != 1; Regenerating secret key...")
+        print("GCD of private key and order != 1; Regenerating private key...")
         private_key = crypto_random.randint(2, order)
     
     public_key = point_multiply(private_key, generator, prime, a)
+    
+    # Verify public key is on the curve
+    if (public_key[1]**2 - (public_key[0]**3 + a*public_key[0] + b)) % prime != 0:
+        print("ERROR: Public key not curve!")
+        exit(1)
     
     return private_key, public_key, prime, a
     
@@ -198,15 +216,15 @@ def verify_data(signer_hostname, data, signature):
 
 # Test ECDHE
 # alice = gen_ECDHE_keys("hostA")
-# print(alice[1])
+# print()
+
 # bob = gen_ECDHE_keys("hostB")
+# print()
+
 # alice_shared = gen_shared_secret(alice[0], bob[1], alice[2], alice[3])
 # bob_shared = gen_shared_secret(bob[0], alice[1], bob[2], bob[3])
 # print(alice_shared)
 # print(bob_shared)
-
-# print(alice[0], bob[1], alice[2], alice[3])
-# print(bob[0], alice[1], bob[2], bob[3])
 
 # assert(alice_shared == bob_shared)
 

@@ -120,14 +120,13 @@ else:
     print("ERROR: Could not verify Host B's public key!")
     quit(1)
 
-print()
+print("\n***KEY EXCHANGE COMPLETE***\n")
+
 print("Host A generating ECDHE shared secret...")
 hostA.shared_secret_ECDHE = EC.gen_shared_secret(hostA.private_key_ECDHE, hostA.other_public_key_ECDHE, hostA.prime_ECDHE, hostA.a_ECDHE)
 print("Host B generating ECDHE shared secret...")
 hostB.shared_secret_ECDHE = EC.gen_shared_secret(hostB.private_key_ECDHE, hostB.other_public_key_ECDHE, hostB.prime_ECDHE, hostB.a_ECDHE)
-
-print("\n***KEY EXCHANGE COMPLETE***\n")
-print("Switching to AES-128-GCM for further communication")
+print("Switching to AES-128-GCM for further communication\n")
 
 print("Host A encrypting and sending message to Host B...")
 ciphertext, iv, mac = AES_128_GCM.encrypt("Hello, I'm Host A. Please send me some super special awesome secret info.", hostA.shared_secret_ECDHE)

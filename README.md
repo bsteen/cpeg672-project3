@@ -22,6 +22,6 @@ https://en.wikipedia.org/wiki/Galois/Counter_Mode
 https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf  
 
 TO DO:  
-Generate ECDHE params  
-Generate ECDSA params  
+Add sequence numbers  
+Generate ECDSA params by hand  
 Do over sockets  
