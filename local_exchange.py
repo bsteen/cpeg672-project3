@@ -1,5 +1,4 @@
-import ECDHE
-import ECDSA
+import EC
 import AES_128_GCM
 
 # Performs a local (within this python script) secure communication handshake
@@ -60,16 +59,16 @@ hostB = Host("hostB")
 # Assume that both host's have already known each others public ECDSA keys
 # Thier public ECDSA keys are "common knowledge", like CA certifcates in a browser
 print("Host A generating ECDSA keys...")
-ECDSA.generate_ECDSA_keys(hostA.name)
+EC.generate_ECDSA_keys(hostA.name)
 
 print("Host B generating ECDSA keys...")
-ECDSA.generate_ECDSA_keys(hostB.name)
+EC.generate_ECDSA_keys(hostB.name)
 
 print("Hosts A and B are generating ECDHE private and public key...")
-hostA.private_key_ECDHE, hostA.public_key_ECDHE, hostA.prime_ECDHE, hostA.a_ECDHE = ECDHE.gen_priv_pub_keys("hostA")
+hostA.private_key_ECDHE, hostA.public_key_ECDHE, hostA.prime_ECDHE, hostA.a_ECDHE = EC.gen_ECDHE_keys("hostA")
 
 print("Host B generating ECDHE private and public key...")
-hostB.private_key_ECDHE, hostB.public_key_ECDHE, hostB.prime_ECDHE, hostB.a_ECDHE = ECDHE.gen_priv_pub_keys("hostB")
+hostB.private_key_ECDHE, hostB.public_key_ECDHE, hostB.prime_ECDHE, hostB.a_ECDHE = EC.gen_ECDHE_keys("hostB")
 
 # A signs public info
 # TO DO
@@ -88,7 +87,7 @@ hostB.other_public_key_ECDHE = hostB.read_currnet_message()[0]
 hostB.clear_current_message()
 
 print("Host B generating ECDHE shared secret...")
-hostB.shared_secret_ECDHE = ECDHE.gen_shared_secret(hostB.private_key_ECDHE, hostB.other_public_key_ECDHE, hostB.prime_ECDHE, hostB.a_ECDHE)
+hostB.shared_secret_ECDHE = EC.gen_shared_secret(hostB.private_key_ECDHE, hostB.other_public_key_ECDHE, hostB.prime_ECDHE, hostB.a_ECDHE)
 
 # B signs public info
 # TO DO
@@ -106,7 +105,7 @@ hostA.other_public_key_ECDHE = hostA.read_currnet_message()[0]
 hostA.clear_current_message()
 
 print("Host A generating ECDHE shared secret...")
-hostA.shared_secret_ECDHE = ECDHE.gen_shared_secret(hostA.private_key_ECDHE, hostA.other_public_key_ECDHE, hostA.prime_ECDHE, hostA.a_ECDHE)
+hostA.shared_secret_ECDHE = EC.gen_shared_secret(hostA.private_key_ECDHE, hostA.other_public_key_ECDHE, hostA.prime_ECDHE, hostA.a_ECDHE)
 
 print("\n***KEY EXCHANGE COMPLETE***\n")
 

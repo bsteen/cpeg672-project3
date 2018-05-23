@@ -15,13 +15,13 @@ from fractions import gcd
 # Bob computes b*aP, Alice computes a*bP, now they both know the shared secret.
 # Hash that (Use the x-coordinate only!!! Hash the hex representation of that x-coordinate with SHA-256) and switch to AES
 
-# Used by gen_priv_pub_keys for reading in key files
+# Used for reading in key files
 def h2i(hexLines):
     if (hexLines == ''):
         return 0
     return int(hexLines.replace(' ','').replace(':',''), 16)
 
-# Used by gen_priv_pub_keys for reading in key files
+# Used for reading in key files
 def splitPoint(hexLines):
     gen=hexLines.replace(' ','').replace(':','')[2:]
     gl=len(gen)//2
@@ -41,7 +41,6 @@ def point_add(Q, P, prime, a):
     y_r = (lamba * (P[0] - x_r) - P[1]) % prime
     return (x_r, y_r)
 
-# Used when generating the public key for ECDHE
 # Point multiplication along an elliptic curve
 # Double-and-add method: https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication#Double-and-add
 def point_multiply(point, generator, prime, a):
@@ -56,29 +55,10 @@ def point_multiply(point, generator, prime, a):
         N = point_add(N, N, prime, a)
     
     return Q
-    
-# Generate private and public keys for ECDHE
-def gen_priv_pub_keys(hostname):
-    # I tried using subprocesses, but it didn't work; but these calls do
-    # Generate EC paramters and convert them in readable format
-    
-    # Make sure folder for PEM files exists
-    if not os.path.exists("certs"):
-        os.makedirs("certs")
-    
-    print("Generating ECDHE parameters...")
-    err1 = os.system("openssl ecparam -name secp384r1 -out certs/%s_ECDHE.pem -param_enc explicit" % hostname)
-    err2 = os.system("openssl ecparam -in certs/%s_ECDHE.pem -text -noout > certs/%s_ECDHE_params.txt" % (hostname, hostname))
-    
-    if(err1 != 0):
-        print("ERROR: Could not create PEM file!")
-        exit(1)
-    if(err2 != 0):
-        print("ERROR: Could not read PEM file!")
-        exit(1)
-    
-    # Read in parameters
-    file = open("certs/%s_ECDHE_params.txt" % hostname,'r')
+
+# Read in parameters of EC
+def read_paramters(hostname, ec_type):
+    file = open("certs/%s_%s_params.txt" % (hostname, ec_type),'r')
     lines = file.readlines()
     file.close()
     
@@ -99,13 +79,37 @@ def gen_priv_pub_keys(hostname):
         else:
             currentHex+=line.strip()
     # print(params) # Useful printout when exporting to Sage
+    return params
+
+# Generate private and public keys for ECDHE
+def gen_ECDHE_keys(hostname):
+    # I tried using subprocesses, but it didn't work; but these calls do
+    # Generate EC paramters and convert them in readable format
     
-    print("Generating secret and (ephemeral) public key...")
+    # Make sure folder for PEM files exists
+    if not os.path.exists("certs"):
+        os.makedirs("certs")
+    
+    print("Generating ECDHE parameters...")
+    err1 = os.system("openssl ecparam -name secp384r1 -out certs/%s_ECDHE.pem -param_enc explicit" % hostname)
+    err2 = os.system("openssl ecparam -in certs/%s_ECDHE.pem -text -noout > certs/%s_ECDHE_params.txt" % (hostname, hostname))
+    
+    if(err1 != 0):
+        print("ERROR: Could not create PEM file!")
+        exit(1)
+    if(err2 != 0):
+        print("ERROR: Could not read PEM file!")
+        exit(1)
+    
+    # Read in generated parameters
+    params = read_paramters(hostname, "ECDHE")
     
     generator = params["Gener"]
     order = params["Order"]
     a = params["A"]
     prime = params["Prime"]
+    
+    print("Generating secret and (ephemeral) public key...")
     private_key = crypto_random.randint(2, order)
     
     while(gcd(private_key, order) != 1):
@@ -136,9 +140,34 @@ def gen_shared_secret(private_key, other_host_pub_key, prime_ECDHE, a_ECDHE):
     print("Shared EC secret created.")
     return shared_secret
 
-# Test key exchange
-alice = gen_priv_pub_keys("hostA")
-bob = gen_priv_pub_keys("hostB")
+def generate_ECDSA_keys(hostname):
+    # Make sure folder for PEM files exists
+    if not os.path.exists("certs"):
+        os.makedirs("certs")
+    
+    print("Generating ECDHE keys...")
+    err1 = os.system("openssl ecparam -name secp384r1 -genkey -noout -out certs/%s_private_ECDSA.pem -param_enc explicit" % hostname)
+    err2 = os.system("openssl ec -in certs/%s_private_ECDSA.pem -noout -out certs/%s_params_ECDSA.txt -text" % (hostname, hostname))
+    
+    if(err1 != 0):
+        print("ERROR: Could not create private key!")
+        exit(1)
+    if(err2 != 0):
+        print("ERROR: Could not create public key and parameters!")
+        exit(1)
+        
+    # Read in generated parameters
+    params = read_paramters(hostname, "ECDSA")
+    
+        
+def sign_data(data):
+    return
+
+generate_ECDSA_keys("hostA")
+
+# Test ECDHE
+alice = gen_ECDHE_keys("hostA")
+bob = gen_ECDHE_keys("hostB")
 alice_shared = gen_shared_secret(alice[0], bob[1], alice[2], alice[3])
 bob_shared = gen_shared_secret(bob[0], alice[1], bob[2], bob[3])
 print(alice_shared)
