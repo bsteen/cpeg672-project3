@@ -66,7 +66,7 @@ def gen_priv_pub_keys(hostname):
     if not os.path.exists("certs"):
         os.makedirs("certs")
     
-    print("Generating EC parameters...")
+    print("Generating ECDHE parameters...")
     err1 = os.system("openssl ecparam -name secp384r1 -out certs/%s_ECDHE.pem -param_enc explicit" % hostname)
     err2 = os.system("openssl ecparam -in certs/%s_ECDHE.pem -text -noout > certs/%s_ECDHE_params.txt" % (hostname, hostname))
     
@@ -143,4 +143,9 @@ alice_shared = gen_shared_secret(alice[0], bob[1], alice[2], alice[3])
 bob_shared = gen_shared_secret(bob[0], alice[1], bob[2], bob[3])
 print(alice_shared)
 print(bob_shared)
-assert(alice_shared == bob_shared)
+
+print(alice[0], bob[1], alice[2], alice[3])
+print(bob[0], alice[1], bob[2], bob[3])
+
+
+# assert(alice_shared == bob_shared)
