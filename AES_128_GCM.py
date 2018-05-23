@@ -23,31 +23,31 @@ def encrypt(plaintext, key):
         iv = os.urandom(16)
     encrypt_ivs.append(iv)
 
-    print("Generated unique IV (16 bytes)")
+    # print("Generated unique IV (16 bytes)")
 
     # key: The secret key to use in the symmetric cipher. It must be 16 (*AES-128*), 24 (*AES-192*), or 32 (*AES-256*) bytes long.
     # From NIST on GCM: the key size shall be AT LEAST 128 bits
     sha256 = SHA256.new()
-    sha256.update(key)      # Caller of encrypt must handle any needed encoding of key before hashing
+    sha256.update(key)
     sha256_key = sha256.digest()
     assert(len(sha256_key) == 16 or len(sha256_key) == 24 or len(sha256_key) == 32), "Key is not 16, 24, or 32 bytes long"
 
-    print("Ensured key is at least 16 bytes")
+    # print("Ensured key is at least 16 bytes")
 
     # Used AES-128-GCM
     cipher = AES.new(sha256_key, AES.MODE_GCM, iv)
 
     # Verify block size is 16 bytes
     assert(AES.block_size == 16), "Block size is not 16 bytes (128 bits)"
-    print("AES-128-GCM in use")
+    # print("AES-128-GCM in use")
 
     # Encrypt message and generate GCM MAC
-    ciphertext, mac = cipher.encrypt_and_digest(plaintext)
+    ciphertext, mac = cipher.encrypt_and_digest(plaintext.encode())
 
-    print("Plaintext encrypted")
+    # print("Plaintext encrypted")
 
     # Make sure MAC is 16 bytes (128 bits)
-    assert(len(mac) == 16), "MAC not 16 bytes"
+    assert(len(mac) == 16), "MAC not 16 bytes (128 bits)"
 
     return ciphertext, iv, mac
 
@@ -57,7 +57,6 @@ def print_decoded(encoded):
         print(plain)
     except:
         print("Could not decode text:", encoded)
-    print()
 
 def decrypt(ciphertext, key, iv, mac):
     # Record all IVs used to decrypt to
@@ -71,7 +70,6 @@ def decrypt(ciphertext, key, iv, mac):
     sha256_key = sha256.digest()
 
     cipher = AES.new(sha256_key, AES.MODE_GCM, iv)
-    print("Cipher text decrypted")
 
     plaintext = cipher.decrypt(ciphertext)
     try:
