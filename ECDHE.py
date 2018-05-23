@@ -1,5 +1,5 @@
 import os
-from Cryptodome.Random import random
+from Cryptodome.Random import random as crypto_random
 from Cryptodome.Hash import SHA256
 from fractions import gcd
 
@@ -62,12 +62,23 @@ def gen_priv_pub_keys(hostname):
     # I tried using subprocesses, but it didn't work; but these calls do
     # Generate EC paramters and convert them in readable format
     
+    # Make sure folder for PEM files exists
+    if not os.path.exists("certs"):
+        os.makedirs("certs")
+    
     print("Generating EC parameters...")
-    os.system("openssl ecparam -name secp384r1 -out certs/%s.pem -param_enc explicit" % hostname)
-    os.system("openssl ecparam -in certs/%s.pem -text -noout > certs/%s_params.txt" % (hostname, hostname))
+    err1 = os.system("openssl ecparam -name secp384r1 -out certs/%s_ECDHE.pem -param_enc explicit" % hostname)
+    err2 = os.system("openssl ecparam -in certs/%s_ECDHE.pem -text -noout > certs/%s_ECDHE_params.txt" % (hostname, hostname))
+    
+    if(err1 != 0):
+        print("ERROR: Could not create PEM file!")
+        exit(1)
+    if(err2 != 0):
+        print("ERROR: Could not read PEM file!")
+        exit(1)
     
     # Read in parameters
-    file = open('certs/%s_params.txt' % hostname,'r')
+    file = open("certs/%s_ECDHE_params.txt" % hostname,'r')
     lines = file.readlines()
     file.close()
     
@@ -95,28 +106,41 @@ def gen_priv_pub_keys(hostname):
     order = params["Order"]
     a = params["A"]
     prime = params["Prime"]
-    secret_key = 16592202607097164923902903348447898525988684857834574738015513852982997034287385876084095912327255475652277336200523
-    #random.randint(2, order)
+    private_key = crypto_random.randint(2, order)
     
-    while(gcd(secret_key, order) != 1):
+    while(gcd(private_key, order) != 1):
         print("GCD of secret key and order != 1; Regenerating secret key...")
-        secret_key = random.randint(2, order)
+        private_key = crypto_random.randint(2, order)
     
-    public_key = point_multiply(secret_key, generator, prime, a)
+    public_key = point_multiply(private_key, generator, prime, a)
     
-    return secret_key, public_key, prime, a
+    print("ECDHE private and public keys created.")
+    return private_key, public_key, prime, a
     
 # Use own secret key and other host's public key to generate shared secret
 # Shared secret is SHA256 sum of x-coordinate from a*b*Generator
-def gen_shared_secret(secret_key, other_host_pub_key, prime_curve, a_curve):
+# prime and a are from the parameters of the selected eliptic curve
+def gen_shared_secret(private_key, other_host_pub_key, prime_ECDHE, a_ECDHE):
     
-    print("Generating shared secret...")
-    x_coord = point_multiply(secret_key, other_host_pub_key, prime_curve, a_curve)[0]
+    print("Generating EC shared secret...")
+    
+    # Only want to use x-coordinate only
+    x_coord = point_multiply(private_key, other_host_pub_key, prime_ECDHE, a_ECDHE)[0]
+    
+    x_coord_hex = hex(x_coord)[2:]
     
     sha256 = SHA256.new()
-    sha256.update(x_coord)
+    sha256.update(x_coord_hex.encode())
     shared_secret = sha256.digest()
     
+    print("Shared EC secret created.")
     return shared_secret
 
-print(gen_priv_pub_keys("hostA_ECDHE")[1])
+# Test key exchange
+alice = gen_priv_pub_keys("hostA")
+bob = gen_priv_pub_keys("hostB")
+alice_shared = gen_shared_secret(alice[0], bob[1], alice[2], alice[3])
+bob_shared = gen_shared_secret(bob[0], alice[1], bob[2], bob[3])
+print(alice_shared)
+print(bob_shared)
+assert(alice_shared == bob_shared)
