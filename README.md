@@ -12,8 +12,8 @@ libraries to assist, again dictated by motivation.
 Dependencies:  
 At least Python 3.4.3  
 Needs version of Cryptodome the supports AES in GCM mode: http://pycryptodome.readthedocs.io/en/latest/src/installation.html  
-`install pycryptodomex` if you want to have both pycrypto and pycryptodome, otherwise: `pip install pycryptodome`  
-
+`pip3 install --user pycryptodomex` if you want to keep both pycrypto and pycryptodome installed at once.  
+Otherwise, pycryptodome with take the place of pycrypto: `pip3 install --user pycryptodome`  
 secp256k1 ecliptic curve needs to be supported on system: `$ openssl ecparam -list_curves | grep secp256k1`  
 
 References:  

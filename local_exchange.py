@@ -45,10 +45,12 @@ hostB = Host("hostB")
 # A generates private key
 # B generates private key
 
-# A signs and sends its public info
+# A signs public info
+# A sends its public info to B
 # B validates and generates shared secret
 
-# B signs and sends its public info
+# B signs public info
+# B sends its public info to A
 # A validates and generates shared secret
 
 # Using shared secret, A encrpyts message and sends to B
