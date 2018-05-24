@@ -82,7 +82,7 @@ class Host:
         self.current_message.clear()
         self.current_message = None
 
-# Used for verifying expeceted sequence number matches the once received
+# Used for verifying expected sequence number matches the once received
 def verify_seq_num(actual, from_message):
     if(actual == from_message):
         return True
@@ -97,58 +97,41 @@ hostB = Host("hostB")
 # Their public ECDSA keys are "common knowledge", like CA certificates in a browser
 print("Host A generating ECDSA keys...")
 EC.generate_ECDSA_keys(hostA.name)
-print()
-print("Host B generating ECDSA keys...")
+print("\nHost B generating ECDSA keys...")
 EC.generate_ECDSA_keys(hostB.name)
-print()
 
-print("***STARTING TRANSMISSION***\n")
+print("\n***STARTING TRANSMISSION***\n")
 
 print("Host A generating ECDHE keys...")
 hostA.private_key_ECDHE, hostA.public_key_ECDHE, hostA.prime_ECDHE, hostA.a_ECDHE = EC.gen_ECDHE_keys("hostA")
-print()
-print("Host B generating ECDHE keys...")
+print("\nHost B generating ECDHE keys...")
 hostB.private_key_ECDHE, hostB.public_key_ECDHE, hostB.prime_ECDHE, hostB.a_ECDHE = EC.gen_ECDHE_keys("hostB")
-print()
 
-print("Host A signing its ECDHE public key and sequence number with its ECDSA private key...")
+print("\nHost A signing its ECDHE public key and sequence number with its ECDSA private key...")
 signed_pubkey_seqnum = EC.sign_data(hostA.name, hostA.public_key_ECDHE, hostA.current_seq_num)
 print("Host A sending public ECDHE key and signature to Host B...")
 pub_key_ECDHE_msg = Message(hostA.public_key_ECDHE, hostA.current_seq_num, "", signed_pubkey_seqnum)
 hostA.send_message(pub_key_ECDHE_msg, hostB)
-print()
 
 # Reading message will check message seq num == host expected sequence number
-# verify_data proves public ECDHE key is from A and that signed data contains B's expected sequecne number
-print("Host B receiving Host A's public ECDHE key...")
+# verify_data proves public ECDHE key is from A and that signed data contains B's expected sequence number
+print("\nHost B receiving Host A's public ECDHE key...")
 data, nonce, signed_data = hostB.read_currnet_message()     # nonce used in this step
 print("Host B validating Host A's public ECDHE key and the sequence number...")
-verified = EC.verify_data(hostA.name, data, hostB.current_seq_num - 1, signed_data)
-if verified:
-    # If valid, B stores A's public ECDHE key
-    hostB.other_public_key_ECDHE = data
-else:
-    print("ERROR: Could not verify Host A's public key and/or sequence number!")
-    quit(1)
-print()
+EC.verify_data(hostA.name, data, hostB.current_seq_num - 1, signed_data)
+hostB.other_public_key_ECDHE = data # If valid, B stores A's public ECDHE key
 
-print("Host B signing its ECDHE public key and sequence number with its ECDSA private key...")
+print("\nHost B signing its ECDHE public key and sequence number with its ECDSA private key...")
 signed_pubkey_seqnum = EC.sign_data(hostB.name, hostB.public_key_ECDHE, hostB.current_seq_num)
 print("Host B sending public ECDHE key and signature to Host A...")
 pub_key_ECDHE_msg = Message(hostB.public_key_ECDHE, hostB.current_seq_num, "", signed_pubkey_seqnum)
 hostB.send_message(pub_key_ECDHE_msg, hostA)
-print()
 
-print("Host A receiving Host B's public ECDHE key...")
+print("\nHost A receiving Host B's public ECDHE key...")
 data, nonce, signed_data = hostA.read_currnet_message()    # nonce used in this step
 print("Host A validating Host B's public ECDHE key and the sequence number...")
-verified = EC.verify_data(hostB.name, data, hostA.current_seq_num - 1, signed_data)
-if verified:
-    # If valid, A stores B's public ECDHE key
-    hostA.other_public_key_ECDHE = data
-else:
-    print("ERROR: Could not verify Host B's public key and/or sequence number!")
-    quit(1)
+EC.verify_data(hostB.name, data, hostA.current_seq_num - 1, signed_data)
+hostA.other_public_key_ECDHE = data
 
 print("\n***KEY EXCHANGE COMPLETE***\n")
 
@@ -169,7 +152,7 @@ print("Host B receiving message from Host A...")
 # Reading message will check message seq num == host expected sequence number
 ciphertext, iv, mac = hostB.read_currnet_message()
 plaintext = AES_128_GCM.decrypt(ciphertext, hostB.shared_secret_ECDHE, iv, mac, hostB.used_ivs)
-    # Returns message and seq num. Verfies the ciphertext wasn't tampered with
+    # Returns message and seq num. Verifies the ciphertext wasn't tampered with
 msg_seq_num = int(plaintext[:plaintext.find(":")])
 message = plaintext[plaintext.find(":") + 1:]
 verify_seq_num(hostB.current_seq_num - 1, msg_seq_num)

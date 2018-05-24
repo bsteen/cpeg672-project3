@@ -140,7 +140,7 @@ def gen_ECDHE_keys(hostname):
 
 # Use own secret key and other host's public key to generate shared secret
 # Shared secret is SHA256 sum of x-coordinate from a*b*Generator
-# prime and a are from the parameters of the selected eliptic curve
+# prime and a are from the parameters of the selected elliptic curve
 def gen_shared_secret(private_key, other_host_pub_key, prime_ECDHE, a_ECDHE):
         # Only want to use x-coordinate only
     x_coord = point_multiply(private_key, other_host_pub_key, prime_ECDHE, a_ECDHE)[0]
@@ -153,7 +153,7 @@ def gen_shared_secret(private_key, other_host_pub_key, prime_ECDHE, a_ECDHE):
 
     return shared_secret
 
-# Generate private and public keys for ECDSA with OpenSSL comman
+# Generate private and public keys for ECDSA with OpenSSL command
 def generate_ECDSA_keys(hostname):
     # Make sure folder for PEM files exists
     if not os.path.exists("certs"):
@@ -167,10 +167,10 @@ def generate_ECDSA_keys(hostname):
         print("ERROR: Could not create private key!")
         exit(1)
     if (err2 != 0):
-        print("ERROR: Could not create parameters")
+        print("ERROR: Could not create parameters!")
         exit(1)
     if(err3 != 0):
-        print("ERROR: Could not create public key")
+        print("ERROR: Could not create public key!")
         exit(1)
 
     # Read in generated parameters
@@ -178,10 +178,9 @@ def generate_ECDSA_keys(hostname):
     return;
 
 # Sign data using ECDSA with OpenSSL command
-# Data to be signed will usually be a ECDHE public keys (a tuple)
-# Need to pack tuple as string before signing
+# Need to pack data as string before signing
 def sign_data(signer_hostname, data, seq_num):
-    data = str(data) + str(seq_num)
+    data = str(seq_num) + str(data)
 
     err = os.system("echo \"%s\" | openssl dgst -sha256 -sign certs/%s_private_ECDSA.pem > certs/sig.bin" % (data, signer_hostname))
     if err != 0:
@@ -199,19 +198,23 @@ def sign_data(signer_hostname, data, seq_num):
 # Verify signature of ECDSA signed file and that signed sequence number matches the host expected number
 # Data to be verified will usually be a ECDHE public keys (a tuple) => need to pack data as string before verifying
 def verify_data(signer_hostname, data, seq_num, signature):
-    data = str(data) + str(seq_num)
+    data = str(seq_num) + str(data)
 
     # Place the signature in readable place
     file = open("certs/sig.bin", "wb")
     file.write(signature)
     file.close()
 
-    # Since we are assuming each host already knows each others's public key from the start
+    # Since we are assuming each host already knows each other's public key from the start
     # we can just read right from the signer host's public key file
     err = os.system("echo \"%s\" | openssl dgst -sha256 -verify certs/%s_public_ECDSA.pem -signature certs/sig.bin" % (data, signer_hostname))
     os.remove("certs/sig.bin")
 
-    return err == 0
+    if err != 0:
+        print("ERROR: Could not verify received public key and/or sequence number!")
+        exit(1)
+
+    return 
 
 # Test ECDHE
 # alice = gen_ECDHE_keys("hostA")
