@@ -175,6 +175,8 @@ def generate_ECDSA_keys(hostname):
 
     # Read in generated parameters
     # params = read_paramters(hostname, "ECDSA")
+    # print(params)
+    
     return;
 
 # Sign data using ECDSA with OpenSSL command

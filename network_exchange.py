@@ -104,6 +104,12 @@ def verify_seq_num(actual, from_message):
     else:
         print("ERROR: Out of order message! Could be an attacker message! (Expected %d, got %d)" % (actual, from_message))
         return False
+        
+# Extract the seq num and message from the decrypted message
+def unpack_decrypted(plaintext):
+    msg_seq_num = int(plaintext[:plaintext.find(":")])
+    message = plaintext[plaintext.find(":") + 1:]
+    return message, msg_seq_num
 
 # The two hosts who will communicate with each other
 hostA = Host("hostA", "127.0.0.1", 8888)
@@ -158,8 +164,7 @@ hostB.shared_secret_ECDHE = EC.gen_shared_secret(hostB.private_key_ECDHE, hostB.
 print("Switching to AES-128-GCM for further communication\n")
 
 print("Host A encrypting and sending message to Host B...")
-plaintext = str(hostA.current_seq_num) + ":" + "Hello, I'm Host A. Please send me some super special awesome secret info."
-    # Encrypt sequence number and message
+plaintext = str(hostA.current_seq_num) + ":" + "Hello, I'm Host A. Please send me some super special awesome secret info." # Encrypt sequence number and message
 ciphertext, iv, mac = AES_128_GCM.encrypt(plaintext, hostA.shared_secret_ECDHE, hostA.used_ivs)
 encrypted_message = Message(ciphertext, hostA.current_seq_num, iv, mac)
 hostA.send_message(encrypted_message, hostB)
@@ -167,10 +172,8 @@ hostA.send_message(encrypted_message, hostB)
 print("Host B receiving message from Host A...")
 # Reading message will check message seq num == host expected sequence number
 ciphertext, iv, mac = hostB.read_currnet_message()
-plaintext = AES_128_GCM.decrypt(ciphertext, hostB.shared_secret_ECDHE, iv, mac, hostB.used_ivs)
-    # Returns message and seq num. Verifies the ciphertext wasn't tampered with
-msg_seq_num = int(plaintext[:plaintext.find(":")])
-message = plaintext[plaintext.find(":") + 1:]
+message, msg_seq_num = unpack_decrypted(AES_128_GCM.decrypt(ciphertext, hostB.shared_secret_ECDHE, iv, mac, hostB.used_ivs))
+# Returns message and seq num. Verifies the ciphertext wasn't tampered with
 verify_seq_num(hostB.current_seq_num - 1, msg_seq_num)
     # We might known now that seq number was not tampered with after it was encrpyted, but we still need to check decrypted
     # seq number matches the seq number sent with the message; An attacker could take a valid MAC and ciphertext from another message
@@ -185,9 +188,7 @@ hostB.send_message(encrypted_message, hostA)
 
 print("Host A receiving message from Host B...")
 ciphertext, iv, mac = hostA.read_currnet_message()
-plaintext = AES_128_GCM.decrypt(ciphertext, hostA.shared_secret_ECDHE, iv, mac, hostA.used_ivs)
-msg_seq_num = int(plaintext[:plaintext.find(":")])
-message = plaintext[plaintext.find(":") + 1:]
+message, msg_seq_num = unpack_decrypted(AES_128_GCM.decrypt(ciphertext, hostA.shared_secret_ECDHE, iv, mac, hostA.used_ivs))
 verify_seq_num(hostA.current_seq_num - 1, msg_seq_num)
 print("Showing decoded message:", message ,"\n")
 
