@@ -1,11 +1,15 @@
 import EC
 import AES_128_GCM
+from socket import *
+import pickle
 
-# Performs a local (within this python script) secure communication handshake
+# Performs a network (on the feedback loop) secure communication handshake
 # and transmission using ECDSA, ECDHE, and AES_128_GCM
 
-# The only thing each host knows about the other is their name, their public ECDSA key,
-# and whatever they receive in the messages.
+# Assumptions, aka the things each host knows about the other before the connection:
+# Host names, IP address, and port numbers
+# Host public ECDSA keys (assume they were distributed through a CA even though I gen new ones each time)
+# Whatever info they receive in the messages
 
 # How the sequence numbers work:
 # Both initial sender and initial receiver start at the same sequence number.
@@ -44,8 +48,13 @@ class Message:
         self.mac = ""
 
 class Host:
-    def __init__(self, name, starting_seq=0):
+    def __init__(self, name, address, port, starting_seq=0):
         self.name = name
+
+        self.port = port
+        self.address = address  # Use local loopback address
+        self.socket = socket(AF_INET, SOCK_DGRAM)   # Make a UDP Socket (TCP would require 2 threads or processes)
+        self.socket.bind((self.address, self.port))
 
         # Parameters and keys for ECDHE
         self.prime_ECDHE = 0
@@ -61,7 +70,18 @@ class Host:
         self.used_ivs = [] # Host must keep track of all IVs used for AES-128-GCM encryption.
                            # Not safe to use the same IV for a single key
 
+    #Sending a message over the network
+    def send_message(self, message, target_Host):
+        self.current_seq_num += 1
+        serial_msg = pickle.dumps(message)      # Serialize and object before sending it over the network
+        self.socket.sendto(serial_msg, (target_Host.address, target_Host.port))
+
+    # Receive a message over the network and verify it's sequence number matches the one the host expects
     def read_currnet_message(self):
+        # Recieved serialized message and sender address; Throw away address (it is already know)
+        # Reconstruct the Message object
+        self.current_message = pickle.loads(self.socket.recvfrom(1024)[0])
+
         if not verify_seq_num(self.current_message.seq_num, self.current_seq_num):
             return None, None, None
         elif self.current_message != None:
@@ -72,11 +92,6 @@ class Host:
         else:
             print("Nothing to read.")
             return None, None, None
-
-    # Simulate sending a message over the network
-    def send_message(self, message, target_Host):
-        self.current_seq_num += 1
-        target_Host.current_message = message
 
     def clear_current_message(self):
         self.current_message.clear()
@@ -90,8 +105,9 @@ def verify_seq_num(actual, from_message):
         print("ERROR: Out of order message! Could be an attacker message! (Expected %d, got %d)" % (actual, from_message))
         return False
 
-hostA = Host("hostA")
-hostB = Host("hostB")
+# The two hosts who will communicate with each other
+hostA = Host("hostA", "127.0.0.1", 8888)
+hostB = Host("hostB", "127.0.0.1", 6666)
 
 # Assume that both host's already know each others public ECDSA keys
 # Their public ECDSA keys are "common knowledge", like CA certificates in a browser

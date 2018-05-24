@@ -13,10 +13,11 @@ To run program: `python3 local_exchange.py`
 It will run through all the steps and then show the decoded messages received.  
 
 Dependencies:  
-Bash enviroment  
+Bash environment  
 At least Python 3.4.3  
 Needs version of Cryptodome the supports AES in GCM mode: http://pycryptodome.readthedocs.io/en/latest/src/installation.html  
 `pip3 install --user pycryptodomex` if you want to keep both pycrypto and pycryptodome installed at once.  
+Pythons `socket` and `pickle` libraries  
 Otherwise, pycryptodome with take the place of pycrypto: `pip3 install --user pycryptodome`  
 secp384r1 ecliptic curve needs to be supported on system: `openssl ecparam -list_curves | grep secp384r1`  
 
