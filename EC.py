@@ -1,5 +1,4 @@
 import os
-import subprocess
 from Cryptodome.Random import random as crypto_random
 from Cryptodome.Hash import SHA256
 from fractions import gcd
@@ -136,6 +135,8 @@ def gen_ECDHE_keys(hostname):
     if (public_key[1]**2 - (public_key[0]**3 + a*public_key[0] + b)) % prime != 0:
         print("ERROR: Public key not curve!")
         exit(1)
+        
+    print(pow(public_key[1], 2, prime))
     
     return private_key, public_key, prime, a
     
@@ -198,7 +199,7 @@ def sign_data(signer_hostname, data):
     return signature
 
 # Verify signature of ECDSA signed file 
-# Data to be verified will usualy be a ECDHE public keys (a tuple) => need to pack data as string before verifying
+# Data to be verified will usually be a ECDHE public keys (a tuple) => need to pack data as string before verifying
 def verify_data(signer_hostname, data, signature):
     data = str(data)
     

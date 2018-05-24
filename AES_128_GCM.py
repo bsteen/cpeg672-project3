@@ -19,7 +19,7 @@ def encrypt(plaintext, key):
     # be up to 2**64 - 1 bits. DO NOT REUSE an initialization_vector with a given key.
 
     iv = os.urandom(16) # 128 bit iv/nonce
-    while (iv in encrypt_ivs) or (iv in decrypt_ivs):   # Make sure not to resuse IV already sent or recieved
+    while (iv in encrypt_ivs) or (iv in decrypt_ivs):   # Make sure not to reuse IV already sent or received
         iv = os.urandom(16)
     encrypt_ivs.append(iv)
 
