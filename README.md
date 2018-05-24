@@ -9,15 +9,16 @@ requirement is merely to have the ability to do this exchange with a Python
 script you write importing a module you write. You can use common crypto
 libraries to assist, again dictated by motivation.
 
-To run: `python3 local_exchange.py`  
+To run program: `python3 local_exchange.py`  
 It will run through all the steps and then show the decoded messages received.  
 
 Dependencies:  
+Bash enviroment  
 At least Python 3.4.3  
 Needs version of Cryptodome the supports AES in GCM mode: http://pycryptodome.readthedocs.io/en/latest/src/installation.html  
 `pip3 install --user pycryptodomex` if you want to keep both pycrypto and pycryptodome installed at once.  
 Otherwise, pycryptodome with take the place of pycrypto: `pip3 install --user pycryptodome`  
-secp384r1 ecliptic curve needs to be supported on system: `$ openssl ecparam -list_curves | grep secp384r1`  
+secp384r1 ecliptic curve needs to be supported on system: `openssl ecparam -list_curves | grep secp384r1`  
 
 References:  
 http://pycryptodome.readthedocs.io/en/latest/src/api.html  

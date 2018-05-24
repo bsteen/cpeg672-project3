@@ -4,6 +4,9 @@ import AES_128_GCM
 # Performs a local (within this python script) secure communication handshake
 # and transmission using ECDSA, ECDHE, and AES_128_GCM
 
+# The only thing each host knows about the other is their name, their public ECDSA key,
+# and whatever they receive in the messages.
+
 # How the sequence numbers work:
 # Both initial sender and initial receiver start at the same sequence number.
 # Sender sends message with its current seq number, 0.
@@ -33,17 +36,17 @@ class Message:
         # 2) Also used when the transmission has switched over to symmetric crypto.
         #    Is the MAC for verifying during decryption of message with GCM mode
         self.mac = mac
-        
+
     def clear(self):
         self.message = ""
         self.seq_num = ""
         self.nonce = ""
         self.mac = ""
-        
+
 class Host:
     def __init__(self, name, starting_seq=0):
         self.name = name
-        
+
         # Parameters and keys for ECDHE
         self.prime_ECDHE = 0
         self.a_ECDHE = 0
@@ -51,13 +54,15 @@ class Host:
         self.public_key_ECDHE = ""
         self.other_public_key_ECDHE = "" # Public (ephemeral) key from other host
         self.shared_secret_ECDHE = ""
-        
+
         self.current_seq_num = starting_seq
         self.current_message = None
-    
+
+        self.used_ivs = [] # Host must keep track of all IVs used for AES-128-GCM encryption.
+                           # Not safe to use the same IV for a single key
+
     def read_currnet_message(self):
-        if self.current_message.seq_num != self.current_seq_num:
-            print("ERROR: Out of order message! (Expected %d, got %d)" % (self.current_seq_num, self.current_message.seq_num))
+        if not verify_seq_num(self.current_message.seq_num, self.current_seq_num):
             return None, None, None
         elif self.current_message != None:
             contents = self.current_message.message, self.current_message.nonce, self.current_message.mac
@@ -67,16 +72,23 @@ class Host:
         else:
             print("Nothing to read.")
             return None, None, None
-            
+
     # Simulate sending a message over the network
     def send_message(self, message, target_Host):
         self.current_seq_num += 1
         target_Host.current_message = message
-        
+
     def clear_current_message(self):
         self.current_message.clear()
         self.current_message = None
-    
+
+# Used for verifying expeceted sequence number matches the once received
+def verify_seq_num(actual, from_message):
+    if(actual == from_message):
+        return True
+    else:
+        print("ERROR: Out of order message! Could be an attacker message! (Expected %d, got %d)" % (actual, from_message))
+        return False
 
 hostA = Host("hostA")
 hostB = Host("hostB")
@@ -99,41 +111,43 @@ print("Host B generating ECDHE keys...")
 hostB.private_key_ECDHE, hostB.public_key_ECDHE, hostB.prime_ECDHE, hostB.a_ECDHE = EC.gen_ECDHE_keys("hostB")
 print()
 
-print("Host A signing its ECDHE public key with its ECDSA private key...")
-signed_public_key_ECDHE = EC.sign_data(hostA.name, hostA.public_key_ECDHE)
-print("Host A sending public ECDHE key (and signed version) to Host B...")
-pub_key_ECDHE_msg = Message(hostA.public_key_ECDHE, hostA.current_seq_num, "", signed_public_key_ECDHE)
+print("Host A signing its ECDHE public key and sequence number with its ECDSA private key...")
+signed_pubkey_seqnum = EC.sign_data(hostA.name, hostA.public_key_ECDHE, hostA.current_seq_num)
+print("Host A sending public ECDHE key and signature to Host B...")
+pub_key_ECDHE_msg = Message(hostA.public_key_ECDHE, hostA.current_seq_num, "", signed_pubkey_seqnum)
 hostA.send_message(pub_key_ECDHE_msg, hostB)
 print()
 
+# Reading message will check message seq num == host expected sequence number
+# verify_data proves public ECDHE key is from A and that signed data contains B's expected sequecne number
 print("Host B receiving Host A's public ECDHE key...")
-data, nonce, signed_data = hostB.read_currnet_message()     # nonce isn't used here
-print("Host B validating Host A's public ECDHE key...")
-verified = EC.verify_data(hostA.name, data, signed_data)
+data, nonce, signed_data = hostB.read_currnet_message()     # nonce used in this step
+print("Host B validating Host A's public ECDHE key and the sequence number...")
+verified = EC.verify_data(hostA.name, data, hostB.current_seq_num - 1, signed_data)
 if verified:
     # If valid, B stores A's public ECDHE key
     hostB.other_public_key_ECDHE = data
 else:
-    print("ERROR: Could not verify Host A's public key!")
+    print("ERROR: Could not verify Host A's public key and/or sequence number!")
     quit(1)
 print()
 
-print("Host B signing its ECDHE public key with its ECDSA private key...")
-signed_public_key_ECDHE = EC.sign_data(hostB.name, hostB.public_key_ECDHE)
-print("Host B sending public ECDHE key (and signed version) to Host A...")
-pub_key_ECDHE_msg = Message(hostB.public_key_ECDHE, hostB.current_seq_num, "", signed_public_key_ECDHE)
+print("Host B signing its ECDHE public key and sequence number with its ECDSA private key...")
+signed_pubkey_seqnum = EC.sign_data(hostB.name, hostB.public_key_ECDHE, hostB.current_seq_num)
+print("Host B sending public ECDHE key and signature to Host A...")
+pub_key_ECDHE_msg = Message(hostB.public_key_ECDHE, hostB.current_seq_num, "", signed_pubkey_seqnum)
 hostB.send_message(pub_key_ECDHE_msg, hostA)
 print()
 
 print("Host A receiving Host B's public ECDHE key...")
-data, nonce, signed_data = hostA.read_currnet_message()    # nonce isn't used here
-print("Host A validating Host B's public ECDHE key...")
-verified = EC.verify_data(hostB.name, data, signed_data)
+data, nonce, signed_data = hostA.read_currnet_message()    # nonce used in this step
+print("Host A validating Host B's public ECDHE key and the sequence number...")
+verified = EC.verify_data(hostB.name, data, hostA.current_seq_num - 1, signed_data)
 if verified:
     # If valid, A stores B's public ECDHE key
     hostA.other_public_key_ECDHE = data
 else:
-    print("ERROR: Could not verify Host B's public key!")
+    print("ERROR: Could not verify Host B's public key and/or sequence number!")
     quit(1)
 
 print("\n***KEY EXCHANGE COMPLETE***\n")
@@ -145,22 +159,37 @@ hostB.shared_secret_ECDHE = EC.gen_shared_secret(hostB.private_key_ECDHE, hostB.
 print("Switching to AES-128-GCM for further communication\n")
 
 print("Host A encrypting and sending message to Host B...")
-ciphertext, iv, mac = AES_128_GCM.encrypt("Hello, I'm Host A. Please send me some super special awesome secret info.", hostA.shared_secret_ECDHE)
+plaintext = str(hostA.current_seq_num) + ":" + "Hello, I'm Host A. Please send me some super special awesome secret info."
+    # Encrypt sequence number and message
+ciphertext, iv, mac = AES_128_GCM.encrypt(plaintext, hostA.shared_secret_ECDHE, hostA.used_ivs)
 encrypted_message = Message(ciphertext, hostA.current_seq_num, iv, mac)
 hostA.send_message(encrypted_message, hostB)
 
 print("Host B receiving message from Host A...")
+# Reading message will check message seq num == host expected sequence number
 ciphertext, iv, mac = hostB.read_currnet_message()
-AES_128_GCM.decrypt(ciphertext, hostB.shared_secret_ECDHE, iv, mac)
-print()
+plaintext = AES_128_GCM.decrypt(ciphertext, hostB.shared_secret_ECDHE, iv, mac, hostB.used_ivs)
+    # Returns message and seq num. Verfies the ciphertext wasn't tampered with
+msg_seq_num = int(plaintext[:plaintext.find(":")])
+message = plaintext[plaintext.find(":") + 1:]
+verify_seq_num(hostB.current_seq_num - 1, msg_seq_num)
+    # We might known now that seq number was not tampered with after it was encrpyted, but we still need to check decrypted
+    # seq number matches the seq number sent with the message; An attacker could take a valid MAC and ciphertext from another message
+    # and created a new message with a different sequence number
+print("Showing decoded message:", message ,"\n")
 
 print("Host B encrypting and sending message to Host A...")
-ciphertext, iv, mac = AES_128_GCM.encrypt("Hello Host A, I'm Host B. Here is some secret info: 09 F9 11 02 9D 74 E3 5B D8 41 56 C5 63 56 88 C0", hostB.shared_secret_ECDHE)
+plaintext = str(hostB.current_seq_num) + ":" + "Hello Host A, I'm Host B. Here is some secret info: 09 F9 11 02 9D 74 E3 5B D8 41 56 C5 63 56 88 C0"
+ciphertext, iv, mac = AES_128_GCM.encrypt(plaintext, hostB.shared_secret_ECDHE, hostB.used_ivs)
 encrypted_message = Message(ciphertext, hostB.current_seq_num, iv, mac)
 hostB.send_message(encrypted_message, hostA)
 
 print("Host A receiving message from Host B...")
 ciphertext, iv, mac = hostA.read_currnet_message()
-AES_128_GCM.decrypt(ciphertext, hostA.shared_secret_ECDHE, iv, mac)
+plaintext = AES_128_GCM.decrypt(ciphertext, hostA.shared_secret_ECDHE, iv, mac, hostA.used_ivs)
+msg_seq_num = int(plaintext[:plaintext.find(":")])
+message = plaintext[plaintext.find(":") + 1:]
+verify_seq_num(hostA.current_seq_num - 1, msg_seq_num)
+print("Showing decoded message:", message ,"\n")
 
-print("\n***TRANSMISSION COMPLETE***")
+print("***TRANSMISSION COMPLETE***")

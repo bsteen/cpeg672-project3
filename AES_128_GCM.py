@@ -63,7 +63,7 @@ def decrypt(ciphertext, key, iv, mac, used_ivs):
         cipher.verify(mac)
         print("Ciphertext integrity verified!")
     except ValueError:
-        print("WARNING! Authentication error when decoding AES-128-GCM cipher text. Do not trust the decrypted text!")
+        print("WARNING! Authentication error when decoding AES-128-GCM cipher text. Do not trust the decrypted message!")
 
     # Plaintext will have the have the sequence number followed by the actual message
     return plaintext.decode()
