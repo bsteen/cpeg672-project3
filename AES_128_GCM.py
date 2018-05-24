@@ -3,15 +3,9 @@ from Cryptodome.Hash import SHA256
 import binascii
 import os
 
-# Keep track of IVs used to encrypt to detect against "stream cipher" attacks
-encrypt_ivs = []
-
-# Keep track of IVs used to decrypt to detect against possible replay attacks
-decrypt_ivs = []
-
 # Encrypts plaintext using key with AES-128-GCM; Returns new initialization vector, ciphertext, and MAC of ciphertext
 # Meeting the 128 key length req. is managed internally by taking the SHA256 hash of whatever key is provided
-def encrypt(plaintext, key):
+def encrypt(plaintext, key, used_ivs):
     # Generates a new, unique IV every encryption
     # initialization_vector (bytes) – Must be unique, a nonce. They do not need to
     # be kept secret and they can be included in a transmitted message. NIST
@@ -19,9 +13,9 @@ def encrypt(plaintext, key):
     # be up to 2**64 - 1 bits. DO NOT REUSE an initialization_vector with a given key.
 
     iv = os.urandom(16) # 128 bit iv/nonce
-    while (iv in encrypt_ivs) or (iv in decrypt_ivs):   # Make sure not to reuse IV already sent or received
+    while (iv in used_ivs):   # Make sure not to reuse IV already sent or received
         iv = os.urandom(16)
-    encrypt_ivs.append(iv)
+    used_ivs.append(iv)
 
     # print("Generated unique IV (16 bytes)")
 
@@ -51,19 +45,12 @@ def encrypt(plaintext, key):
 
     return ciphertext, iv, mac
 
-def print_decoded(encoded):
-    try:
-        plain = encoded.decode()
-        print(plain)
-    except:
-        print("Could not decode text:", encoded)
-
-def decrypt(ciphertext, key, iv, mac):
+def decrypt(ciphertext, key, iv, mac, used_ivs):
     # Record all IVs used to decrypt to
-    if iv in decrypt_ivs:
-        print("IV was already used before! Possible replay attack!")
+    if iv in used_ivs:
+        print("ERROR: IV was already used before! Possible replay attack!")
     else:
-        decrypt_ivs.append(iv)
+        used_ivs.append(iv)
 
     sha256 = SHA256.new()
     sha256.update(key)
@@ -74,14 +61,12 @@ def decrypt(ciphertext, key, iv, mac):
     plaintext = cipher.decrypt(ciphertext)
     try:
         cipher.verify(mac)
-        print("Message integrity verified!")
+        print("Ciphertext integrity verified!")
     except ValueError:
         print("WARNING! Authentication error when decoding AES-128-GCM cipher text. Do not trust the decrypted text!")
-        
-    print("Showing decrypted message: ", end="")
-    print_decoded(plaintext)
-    
-    return plaintext
+
+    # Plaintext will have the have the sequence number followed by the actual message
+    return plaintext.decode()
 
 # # Test GCM MAC feature
 # k = "my secret key".encode()
