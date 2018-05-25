@@ -1,5 +1,6 @@
-# CPEG 672 - Project 3:
-DUE LAST DAY OF FINALS: 5/24/2018  
+# CPEG 672 - Project 3
+# Benjamin Steenkamer
+__DUE LAST DAY OF FINALS: 5/24/2018__  
 Assignment site: http://crypto.prof.ninja/projects/  
 Develop an end-to-end encryption tool set which does the modern load:
 Perform an ECDHE key exchange, sign the data using ECDSA, then switch to
@@ -15,11 +16,13 @@ Run: `python3 local_exchange.py` or `python3 network_exchange.py`
 Either will will run through all the steps and then show the decoded messages received.
 `network_exchange.py` will do the same steps as `local_exchange.py`, but it will transfer the messages over the local
 network instead of just using variables to simulate a connection.
-Basically `network_exchange.py` uses sockets, `local_exchange.py` uses shared variables as the "network connection."
+Basically `network_exchange.py` uses sockets, `local_exchange.py` uses shared variables as the "network connection."  
+`ecdsa_test.py` is an attempt to roll my own ECDSA signing and verifying functions. It ended up not working, 
+so I instead used OpenSSL's command line utility to handle all ECDSA operations.
 
 ## Dependencies:  
 * Bash environment  
-* At least Python 3.4.3 (DO NOT USE PYTHON 2! In fact, never use it for anything ever!)  
+* At least Python 3.4.3 (DO NOT USE PYTHON 2! In fact, never use it for anything ever!: https://pythonclock.org/)  
 * Needs a version of Cryptodome that supports AES in GCM mode: http://pycryptodome.readthedocs.io/en/latest/src/installation.html  
 If you want to keep both pycrypto and pycryptodome installed at once: `pip3 install --user pycryptodomex`  
 Otherwise, pycryptodome with take the place of pycrypto: `pip3 install --user pycryptodome` 

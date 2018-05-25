@@ -3,13 +3,19 @@ import AES_128_GCM
 from socket import *
 import pickle
 
-# Performs a network (on the feedback loop) secure communication handshake
+# Performs a network (on the local feedback loop) secure communication handshake
 # and transmission using ECDSA, ECDHE, and AES_128_GCM
 
-# Assumptions, aka the things each host knows about the other before the connection:
+# Assumptions, a.k.a. the things each host knows about the other before the connection:
 # Host names, IP address, and port numbers
 # Host public ECDSA keys (assume they were distributed through a CA even though I gen new ones each time)
 # Whatever info they receive in the messages
+
+# I could have exchanged the public ECDSA keys through my message system, but I felt like this would
+# make them vulnerable to the imaginary attacker in my network, who would intercept and change them.
+# In my setup, there would be no way for the reciever to verify the other host's public key is legitimate.
+# For this connection, I have assumed the public keys were transmitted to each host in some secure manner
+# not shown in my code before the transmission begins.
 
 # How the sequence numbers work:
 # Both initial sender and initial receiver start at the same sequence number.
@@ -21,6 +27,7 @@ import pickle
 # and the receiver's sequence number would still be in sync as it's expecting a seq number of 1.
 # If instead the receiver becomes the sender, it would send a message with sequence number 1,
 # and the new receiver (old sender) would be expecting a message with seq number 1.
+# The seq num continues to count up in this fashion, increasing whenever a host sends or recieves data.
 
 # Contains the information passed between the two hosts
 class Message:

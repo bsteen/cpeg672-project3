@@ -3,6 +3,7 @@ from Cryptodome.Random import random as crypto_random
 from Cryptodome.Hash import SHA256
 from fractions import gcd
 
+# Contains all the functions for elliptic curve operations used in *_exchange.py
 # Since we are using AES-128, the equivalent security in EC would be at least 256 bits
 # Use secp256k1 or secp384r1 (seems to work better) elliptic curve
 
@@ -95,13 +96,13 @@ def read_paramters(hostname, ec_type):
 
 # Generate private and public keys for ECDHE
 def gen_ECDHE_keys(hostname):
-    # I tried using subprocesses, but it didn't work; but these calls do
-    # Generate EC paramters and convert them in readable format
-
+    # I tried using subprocesses, but it didn't work; os.system does work though
+    # First, generate EC paramters and convert them in readable format
+    
     # Make sure folder for PEM files exists
     if not os.path.exists("certs"):
         os.makedirs("certs")
-
+    
     print("Generating ECDHE parameters...")
     err1 = os.system("openssl ecparam -name secp384r1 -out certs/%s_ECDHE.pem -param_enc explicit" % hostname)
     err2 = os.system("openssl ecparam -in certs/%s_ECDHE.pem -text -noout > certs/%s_ECDHE_params.txt" % (hostname, hostname))
@@ -133,16 +134,17 @@ def gen_ECDHE_keys(hostname):
 
     # Verify public key is on the curve
     if (public_key[1]**2 - (public_key[0]**3 + a*public_key[0] + b)) % prime != 0:
-        print("ERROR: Public key not curve!")
+        print("ERROR: Public key not curve! Failed to create a correct public key")
         exit(1)
 
     return private_key, public_key, prime, a
 
 # Use own secret key and other host's public key to generate shared secret
-# Shared secret is SHA256 sum of x-coordinate from a*b*Generator
+# Shared secret is SHA256 sum of the x-coordinate from a*b*Generator
 # prime and a are from the parameters of the selected elliptic curve
 def gen_shared_secret(private_key, other_host_pub_key, prime_ECDHE, a_ECDHE):
-        # Only want to use x-coordinate only
+    
+    # Only want to use x-coordinate only
     x_coord = point_multiply(private_key, other_host_pub_key, prime_ECDHE, a_ECDHE)[0]
 
     x_coord_hex = hex(x_coord)[2:]
@@ -154,6 +156,7 @@ def gen_shared_secret(private_key, other_host_pub_key, prime_ECDHE, a_ECDHE):
     return shared_secret
 
 # Generate private and public keys for ECDSA with OpenSSL command
+# See ecdsa_test.py for my own attempt at implemeting this
 def generate_ECDSA_keys(hostname):
     # Make sure folder for PEM files exists
     if not os.path.exists("certs"):
@@ -177,6 +180,9 @@ def generate_ECDSA_keys(hostname):
     # params = read_paramters(hostname, "ECDSA")
     # print(params)
     
+    # Here I would have my own code to calculate the keys
+    # See ecdsa_test.py
+    
     return;
 
 # Sign data using ECDSA with OpenSSL command
@@ -197,7 +203,7 @@ def sign_data(signer_hostname, data, seq_num):
 
     return signature
 
-# Verify signature of ECDSA signed file and that signed sequence number matches the host expected number
+# Verify signature of ECDSA signed data and that signed sequence number matches the host expected number
 # Data to be verified will usually be a ECDHE public keys (a tuple) => need to pack data as string before verifying
 def verify_data(signer_hostname, data, seq_num, signature):
     data = str(seq_num) + str(data)
@@ -207,8 +213,8 @@ def verify_data(signer_hostname, data, seq_num, signature):
     file.write(signature)
     file.close()
 
-    # Since we are assuming each host already knows each other's public key from the start
-    # we can just read right from the signer host's public key file
+    # Since we are assuming each host already knows each other's public key from the start,
+    # we are just going to read from the signer host's public key file to get it
     err = os.system("echo \"%s\" | openssl dgst -sha256 -verify certs/%s_public_ECDSA.pem -signature certs/sig.bin" % (data, signer_hostname))
     os.remove("certs/sig.bin")
 
