@@ -129,7 +129,7 @@ EC.generate_ECDSA_keys(hostA.name)
 print("\nHost B generating ECDSA keys...")
 EC.generate_ECDSA_keys(hostB.name)
 
-print("\n***STARTING LOCAL TRANSMISSION***\n")
+print("\n***STARTING NETWORK TRANSMISSION***\n")
 
 print("Host A generating ECDHE keys...")
 hostA.private_key_ECDHE, hostA.public_key_ECDHE, hostA.prime_ECDHE, hostA.a_ECDHE = EC.gen_ECDHE_keys("hostA")
